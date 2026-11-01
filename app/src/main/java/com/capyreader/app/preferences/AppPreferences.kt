@@ -224,5 +224,8 @@ class AppPreferences(context: Context) {
         val markReadOnScroll: Preference<Boolean>
             get() = preferenceStore.getBoolean("article_list_mark_read_on_scroll", false)
 
+        val pageScroll: Preference<Boolean>
+            get() = preferenceStore.getBoolean("article_list_page_scroll", false)
+
     }
 }
