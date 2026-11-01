@@ -57,6 +57,9 @@ class GeneralSettingsViewModel(
     var markReadOnScroll by mutableStateOf(appPreferences.articleListOptions.markReadOnScroll.get())
         private set
 
+    var pageScroll by mutableStateOf(appPreferences.articleListOptions.pageScroll.get())
+        private set
+
     var refreshOnWiFiOnly by mutableStateOf(appPreferences.refreshOnWiFiOnly.get())
         private set
 
@@ -116,6 +119,12 @@ class GeneralSettingsViewModel(
         appPreferences.articleListOptions.markReadOnScroll.set(enabled)
 
         markReadOnScroll = enabled
+    }
+
+    fun updatePageScroll(enabled: Boolean) {
+        appPreferences.articleListOptions.pageScroll.set(enabled)
+
+        pageScroll = enabled
     }
 
     fun updateStickyFullContent(enable: Boolean) {
