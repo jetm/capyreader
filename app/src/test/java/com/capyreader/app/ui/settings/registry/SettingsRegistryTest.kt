@@ -98,6 +98,21 @@ class SettingsRegistryTest {
     }
 
     @Test
+    fun `search finds tap to turn pages under the article list gestures`() {
+        val results = SettingsRegistry.search("tap to turn pages", local, resolve)
+            .filter { it.setting != null }
+            .map { it.setting to it.path.joinToString(" > ") }
+
+        assertEquals(
+            setOf(Setting.TAP_TO_PAGE, Setting.PAGE_SCROLL_TAPS),
+            results.map { it.first }.toSet(),
+        )
+        assertTrue(
+            results.contains(Setting.PAGE_SCROLL_TAPS to "Article List > Gestures"),
+        )
+    }
+
+    @Test
     fun `search matches panel titles`() {
         val result = SettingsRegistry.search("reader", local, resolve).first()
 
