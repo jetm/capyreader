@@ -75,6 +75,7 @@ object SettingsRegistry {
                         Setting.SHOW_FEED_ICONS,
                         Setting.SHOW_SUMMARY,
                         Setting.SHORTEN_TITLES,
+                        Setting.COMPACT_MODE,
                         Setting.IMAGE_PREVIEW,
                         Setting.UNREAD_BADGES,
                     ),
@@ -205,6 +206,7 @@ object SettingsRegistry {
             Setting.SHOW_FEED_ICONS -> R.string.settings_article_list_feed_icons
             Setting.SHOW_SUMMARY -> R.string.settings_article_list_summary
             Setting.SHORTEN_TITLES -> R.string.settings_article_list_shorten_titles
+            Setting.COMPACT_MODE -> R.string.settings_article_list_compact_mode
             Setting.IMAGE_PREVIEW -> R.string.image_preview_label
             Setting.LIST_SWIPE_START -> R.string.settings_gestures_list_row_swipe_start
             Setting.LIST_SWIPE_END -> R.string.settings_gestures_list_row_swipe_end

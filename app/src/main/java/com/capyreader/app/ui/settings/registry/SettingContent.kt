@@ -10,6 +10,7 @@ import com.capyreader.app.ui.settings.panels.ArticleListPreviewRow
 import com.capyreader.app.ui.settings.panels.AutoDeleteRow
 import com.capyreader.app.ui.settings.panels.BackActionRow
 import com.capyreader.app.ui.settings.panels.ClearArticlesRow
+import com.capyreader.app.ui.settings.panels.CompactModeRow
 import com.capyreader.app.ui.settings.panels.ConfirmMarkAllReadRow
 import com.capyreader.app.ui.settings.panels.CrashLogsRow
 import com.capyreader.app.ui.settings.panels.CrashReportingRow
@@ -73,6 +74,7 @@ fun SettingContent(
         Setting.SHOW_FEED_ICONS -> ShowFeedIconsRow()
         Setting.SHOW_SUMMARY -> ShowSummaryRow()
         Setting.SHORTEN_TITLES -> ShortenTitlesRow()
+        Setting.COMPACT_MODE -> CompactModeRow()
         Setting.IMAGE_PREVIEW -> ImagePreviewRow()
         Setting.LIST_SWIPE_START -> ListSwipeStartRow()
         Setting.LIST_SWIPE_END -> ListSwipeEndRow()
