@@ -15,9 +15,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.PointerType
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -30,6 +33,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
+private const val TAP_ZONE_EDGE_FRACTION = 1f / 4f
+
 internal class PageScrollConnection(
     private val listState: LazyListState,
     private val scope: CoroutineScope,
@@ -41,6 +46,7 @@ internal class PageScrollConnection(
     private var consumed = false
     private var passedThrough = false
     private var liftedAfterDrag = false
+    private var turning = false
     private var turnJob: Job? = null
     private var liftExpiry: Job? = null
 
@@ -78,6 +84,70 @@ internal class PageScrollConnection(
                 }
             }
         }
+    }
+
+    suspend fun trackTaps(pointerScope: PointerInputScope) {
+        with(pointerScope) {
+            awaitEachGesture {
+                val down = awaitFirstDown(
+                    requireUnconsumed = false,
+                    pass = PointerEventPass.Initial,
+                )
+
+                if (down.type == PointerType.Mouse) {
+                    return@awaitEachGesture
+                }
+
+                val direction = tapZoneDirection(
+                    x = down.position.x,
+                    width = size.width.toFloat(),
+                    edgeFraction = TAP_ZONE_EDGE_FRACTION,
+                ) ?: return@awaitEachGesture
+
+                val stopsFling = listState.isScrollInProgress && !turning
+
+                val up = awaitTapUp(down) ?: return@awaitEachGesture
+
+                up.consume()
+
+                if (!stopsFling) {
+                    turnByTap(direction)
+                }
+            }
+        }
+    }
+
+    private suspend fun AwaitPointerEventScope.awaitTapUp(down: PointerInputChange): PointerInputChange? {
+        while (true) {
+            val event = awaitPointerEvent(PointerEventPass.Initial)
+            val change = event.changes.firstOrNull { it.id == down.id } ?: return null
+
+            if (event.changes.any { it.id != down.id && it.pressed }) {
+                return null
+            }
+
+            val moved = (change.position - down.position).getDistance()
+            val held = change.uptimeMillis - down.uptimeMillis
+
+            if (!isTap(
+                    distancePixels = moved,
+                    durationMillis = held,
+                    touchSlopPixels = viewConfiguration.touchSlop,
+                    longPressMillis = viewConfiguration.longPressTimeoutMillis,
+                )
+            ) {
+                return null
+            }
+
+            if (change.changedToUpIgnoreConsumed()) {
+                return if (!change.isConsumed) change else null
+            }
+        }
+    }
+
+    private fun turnByTap(direction: PageDirection) {
+        turnJob?.cancel()
+        turnJob = scope.launch { turn(direction) }
     }
 
     override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -155,11 +225,17 @@ internal class PageScrollConnection(
     }
 
     private suspend fun turn(direction: PageDirection) {
-        snapshotFlow { listState.isScrollInProgress }.first { !it }
+        turning = true
 
-        when (direction) {
-            PageDirection.FORWARD -> turnForward()
-            PageDirection.BACK -> turnBack()
+        try {
+            snapshotFlow { listState.isScrollInProgress }.first { !it }
+
+            when (direction) {
+                PageDirection.FORWARD -> turnForward()
+                PageDirection.BACK -> turnBack()
+            }
+        } finally {
+            turning = false
         }
     }
 
@@ -230,7 +306,8 @@ internal fun rememberPageScrollConnection(listState: LazyListState): PageScrollC
     }
 }
 
-internal fun Modifier.pageScroll(connection: PageScrollConnection): Modifier {
+internal fun Modifier.pageScroll(connection: PageScrollConnection, taps: Boolean = false): Modifier {
     return pointerInput(connection) { connection.trackTouches(this) }
+        .then(if (taps) Modifier.pointerInput(connection) { connection.trackTaps(this) } else Modifier)
         .nestedScroll(connection)
 }
