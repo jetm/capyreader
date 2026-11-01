@@ -227,5 +227,8 @@ class AppPreferences(context: Context) {
         val pageScroll: Preference<Boolean>
             get() = preferenceStore.getBoolean("article_list_page_scroll", false)
 
+        val pageScrollTaps: Preference<Boolean>
+            get() = preferenceStore.getBoolean("article_list_page_scroll_taps", false)
+
     }
 }
