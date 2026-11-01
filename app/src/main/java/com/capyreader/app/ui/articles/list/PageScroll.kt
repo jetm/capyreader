@@ -84,3 +84,28 @@ fun consumesPreScroll(
         !(delta > 0f && !canScrollBackward) &&
         !(delta < 0f && !canScrollForward)
 }
+
+fun tapZoneDirection(
+    x: Float,
+    width: Float,
+    edgeFraction: Float,
+): PageDirection? {
+    if (width <= 0f) return null
+
+    val zone = x / width
+
+    return when {
+        zone < edgeFraction -> PageDirection.BACK
+        zone > 1f - edgeFraction -> PageDirection.FORWARD
+        else -> null
+    }
+}
+
+fun isTap(
+    distancePixels: Float,
+    durationMillis: Long,
+    touchSlopPixels: Float,
+    longPressMillis: Long,
+): Boolean {
+    return distancePixels <= touchSlopPixels && durationMillis <= longPressMillis
+}
