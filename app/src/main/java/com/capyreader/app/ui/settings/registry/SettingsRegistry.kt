@@ -87,6 +87,7 @@ object SettingsRegistry {
                         Setting.LIST_SWIPE_UP,
                         Setting.BACK_ACTION,
                         Setting.MARK_READ_ON_SCROLL,
+                        Setting.PAGE_SCROLL,
                     ),
                 ),
                 SettingsSection(
@@ -211,6 +212,7 @@ object SettingsRegistry {
             Setting.LIST_SWIPE_UP -> R.string.settings_gestures_list_swipe_up
             Setting.BACK_ACTION -> R.string.settings_gestures_list_back_navigation_action
             Setting.MARK_READ_ON_SCROLL -> R.string.settings_mark_read_on_scroll
+            Setting.PAGE_SCROLL -> R.string.settings_scroll_by_page
             Setting.CONFIRM_MARK_ALL_READ -> R.string.settings_confirm_mark_all_read
             Setting.AFTER_READ_ALL -> R.string.after_read_all_behavior_label
             Setting.MARK_ALL_READ_POSITION -> R.string.mark_all_read_button_position
