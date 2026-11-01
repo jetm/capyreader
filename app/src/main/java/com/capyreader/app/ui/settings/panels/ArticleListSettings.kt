@@ -235,6 +235,19 @@ fun PageScrollRow(viewModel: GeneralSettingsViewModel = koinViewModel()) {
 }
 
 @Composable
+fun PageScrollTapsRow(viewModel: GeneralSettingsViewModel = koinViewModel()) {
+    RowItem {
+        TextSwitch(
+            onCheckedChange = viewModel::updatePageScrollTaps,
+            checked = viewModel.pageScrollTaps,
+            title = stringResource(R.string.settings_page_scroll_taps_title),
+            subtitle = stringResource(R.string.settings_page_scroll_taps_subtitle),
+            enabled = viewModel.pageScroll,
+        )
+    }
+}
+
+@Composable
 fun ConfirmMarkAllReadRow(viewModel: GeneralSettingsViewModel = koinViewModel()) {
     RowItem {
         TextSwitch(
