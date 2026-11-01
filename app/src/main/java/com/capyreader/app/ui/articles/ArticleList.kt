@@ -55,6 +55,7 @@ fun ArticleList(
     onMarkAllRead: (range: MarkRead) -> Unit = {},
     enableMarkReadOnScroll: Boolean = false,
     enablePageScroll: Boolean = false,
+    enablePageTaps: Boolean = false,
     dimReadArticles: Boolean = true,
     showNewArticles: Boolean = false,
     scrollToTop: () -> Unit = {},
@@ -79,7 +80,7 @@ fun ArticleList(
                         .onGloballyPositioned { coordinates ->
                             listHeight = with(localDensity) { coordinates.size.height.toDp() }
                         }
-                        .then(if (enablePageScroll) Modifier.pageScroll(pageScroll) else Modifier)
+                        .then(if (enablePageScroll) Modifier.pageScroll(pageScroll, taps = enablePageTaps) else Modifier)
                 ) {
                     items(count = articles.itemCount, key = articles.itemKey { it.id }) { index ->
                         val item = articles[index]
