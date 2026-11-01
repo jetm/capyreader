@@ -86,6 +86,18 @@ class SettingsRegistryTest {
     }
 
     @Test
+    fun `search finds scroll by page under the article list gestures`() {
+        val results = SettingsRegistry.search("scroll by page", local, resolve)
+            .filter { it.setting != null }
+            .map { it.setting to it.path.joinToString(" > ") }
+
+        assertEquals(
+            listOf(Setting.PAGE_SCROLL to "Article List > Gestures"),
+            results,
+        )
+    }
+
+    @Test
     fun `search matches panel titles`() {
         val result = SettingsRegistry.search("reader", local, resolve).first()
 
