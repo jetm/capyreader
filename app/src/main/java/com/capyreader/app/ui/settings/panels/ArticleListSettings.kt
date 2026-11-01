@@ -47,6 +47,7 @@ import com.capyreader.app.ui.articles.ArticleRowOptions
 import com.capyreader.app.ui.articles.FaviconBadge
 import com.capyreader.app.ui.articles.MarkReadPosition
 import com.capyreader.app.ui.articles.StyleProviders
+import com.capyreader.app.ui.articles.titleMaxLines
 import com.capyreader.app.ui.articles.list.ArticleListItem
 import com.capyreader.app.ui.components.FormSection
 import com.capyreader.app.ui.components.LabelStyle
@@ -331,7 +332,7 @@ private fun PreviewArticleRow(rowOptions: ArticleRowOptions) {
             headlineContent = {
                 Text(
                     text = PREVIEW_TITLE,
-                    maxLines = if (rowOptions.shortenTitles) 3 else Int.MAX_VALUE,
+                    maxLines = titleMaxLines(rowOptions.shortenTitles, rowOptions.compactMode),
                     overflow = TextOverflow.Ellipsis,
                     fontWeight = FontWeight.Bold,
                 )

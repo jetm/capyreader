@@ -58,13 +58,15 @@ fun ArticleListItem(
                     bottom = bottomPadding,
                 )
         ) {
-            overlineContent?.let {
-                Row(Modifier.padding(start = overlineStartPadding)) {
-                    ProvideTextStyleFromToken(
-                        colors.overlineContentColor,
-                        typography.labelSmall,
-                        it,
-                    )
+            if (!compact) {
+                overlineContent?.let {
+                    Row(Modifier.padding(start = overlineStartPadding)) {
+                        ProvideTextStyleFromToken(
+                            colors.overlineContentColor,
+                            typography.labelSmall,
+                            it,
+                        )
+                    }
                 }
             }
             Row(
@@ -79,6 +81,18 @@ fun ArticleListItem(
                         typography.bodyLarge,
                     ) {
                         headlineContent()
+                    }
+
+                    if (compact) {
+                        overlineContent?.let {
+                            Row(Modifier.padding(top = CompactOverlineTopPadding)) {
+                                ProvideTextStyleFromToken(
+                                    colors.overlineContentColor,
+                                    typography.labelSmall,
+                                    it,
+                                )
+                            }
+                        }
                     }
 
                     supportingContent?.let {
@@ -113,9 +127,11 @@ private val BottomPadding = 16.dp
 
 private val CompactVerticalSpacing = 8.dp
 
-private val CompactTopPadding = 4.dp
+private val CompactTopPadding = 8.dp
 
-private val CompactBottomPadding = 4.dp
+private val CompactBottomPadding = 8.dp
+
+private val CompactOverlineTopPadding = 2.dp
 
 private val CompactMinHeight = 48.dp
 
