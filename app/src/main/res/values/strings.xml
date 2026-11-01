@@ -283,6 +283,8 @@
     <string name="settings_confirm_mark_all_read">Confirm marking all as read</string>
     <string name="settings_mark_read_on_scroll">Mark as read on scroll</string>
     <string name="settings_scroll_by_page">Scroll by page</string>
+    <string name="settings_page_scroll_taps_title">Tap to turn pages</string>
+    <string name="settings_page_scroll_taps_subtitle">Tap the left or right edge of the article list to go back or forward a page (requires Scroll by page)</string>
     <string name="article_list_new_articles_pill">New articles</string>
     <string name="settings_gestures_enable_horizontal_pagination_title">Enable horizontal scroll</string>
     <string name="settings_gestures_enable_horizontal_pagination_subtitle">Swipe left or right to navigate articles</string>

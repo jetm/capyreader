@@ -60,6 +60,9 @@ class GeneralSettingsViewModel(
     var pageScroll by mutableStateOf(appPreferences.articleListOptions.pageScroll.get())
         private set
 
+    var pageScrollTaps by mutableStateOf(appPreferences.articleListOptions.pageScrollTaps.get())
+        private set
+
     var refreshOnWiFiOnly by mutableStateOf(appPreferences.refreshOnWiFiOnly.get())
         private set
 
@@ -125,6 +128,12 @@ class GeneralSettingsViewModel(
         appPreferences.articleListOptions.pageScroll.set(enabled)
 
         pageScroll = enabled
+    }
+
+    fun updatePageScrollTaps(enabled: Boolean) {
+        appPreferences.articleListOptions.pageScrollTaps.set(enabled)
+
+        pageScrollTaps = enabled
     }
 
     fun updateStickyFullContent(enable: Boolean) {
