@@ -188,6 +188,7 @@ fun ArticleScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val confirmMarkAllReadEnabled by appPreferences.articleListOptions.confirmMarkAllRead.asState()
+    val pageScrollEnabled by appPreferences.articleListOptions.pageScroll.asState()
     val markAllReadButtonPosition by appPreferences.articleListOptions.markReadButtonPosition.asState()
     var isMarkAllReadDialogOpen by remember { mutableStateOf(false) }
 
@@ -616,6 +617,7 @@ fun ArticleScreen(
                                             selectedArticleKey = selectedArticleID,
                                             listState = listState,
                                             enableMarkReadOnScroll = viewModel.markReadOnScrollEnabled,
+                                            enablePageScroll = pageScrollEnabled,
                                             dimReadArticles = presentedArticles.filter.status != ArticleStatus.STARRED,
                                             showNewArticles = newArticles.isVisible,
                                             scrollToTop = { scrollToTop() },
