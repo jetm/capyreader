@@ -5,6 +5,8 @@ import com.jocmp.capy.ArticleStatus
 import com.jocmp.capy.articles.SortOrder
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +53,15 @@ class AppPreferencesTest {
                 appPreferences.articleListOptions.getSortOrder(status).get()
             )
         }
+    }
+
+    @Test
+    fun `compact mode defaults to off`() {
+        assertFalse(appPreferences.articleListOptions.compactMode.get())
+
+        appPreferences.articleListOptions.compactMode.set(true)
+
+        assertTrue(appPreferences.articleListOptions.compactMode.get())
     }
 
     @Test

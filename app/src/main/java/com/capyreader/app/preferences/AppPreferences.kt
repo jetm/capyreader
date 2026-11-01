@@ -188,6 +188,9 @@ class AppPreferences(context: Context) {
         val shortenTitles: Preference<Boolean>
             get() = preferenceStore.getBoolean("article_display_shorten_titles", true)
 
+        val compactMode: Preference<Boolean>
+            get() = preferenceStore.getBoolean("article_display_compact_mode", false)
+
         val fontScale: Preference<ArticleListFontScale>
             get() = preferenceStore.getEnum(
                 "article_display_font_scale",
