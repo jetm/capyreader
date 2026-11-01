@@ -41,6 +41,23 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun `tap to turn pages defaults to off`() {
+        val options = appPreferences.articleListOptions
+
+        assertEquals(false, options.pageScrollTaps.get())
+
+        options.pageScrollTaps.set(true)
+
+        assertEquals(true, options.pageScrollTaps.get())
+        assertEquals(false, options.pageScroll.get())
+
+        options.pageScrollTaps.set(false)
+        options.pageScroll.set(true)
+
+        assertEquals(false, options.pageScrollTaps.get())
+    }
+
+    @Test
     fun `sort order defaults to newest first for each status`() {
         ArticleStatus.entries.forEach { status ->
             assertEquals(
