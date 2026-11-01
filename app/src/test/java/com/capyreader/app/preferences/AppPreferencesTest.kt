@@ -29,6 +29,18 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun `scroll by page defaults to off`() {
+        val options = appPreferences.articleListOptions
+
+        assertEquals(false, options.pageScroll.get())
+
+        options.pageScroll.set(true)
+
+        assertEquals(true, options.pageScroll.get())
+        assertEquals(false, options.markReadOnScroll.get())
+    }
+
+    @Test
     fun `sort order defaults to newest first for each status`() {
         ArticleStatus.entries.forEach { status ->
             assertEquals(
