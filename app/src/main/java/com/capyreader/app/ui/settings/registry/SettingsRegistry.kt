@@ -88,6 +88,7 @@ object SettingsRegistry {
                         Setting.BACK_ACTION,
                         Setting.MARK_READ_ON_SCROLL,
                         Setting.PAGE_SCROLL,
+                        Setting.PAGE_SCROLL_TAPS,
                     ),
                 ),
                 SettingsSection(
@@ -213,6 +214,7 @@ object SettingsRegistry {
             Setting.BACK_ACTION -> R.string.settings_gestures_list_back_navigation_action
             Setting.MARK_READ_ON_SCROLL -> R.string.settings_mark_read_on_scroll
             Setting.PAGE_SCROLL -> R.string.settings_scroll_by_page
+            Setting.PAGE_SCROLL_TAPS -> R.string.settings_page_scroll_taps_title
             Setting.CONFIRM_MARK_ALL_READ -> R.string.settings_confirm_mark_all_read
             Setting.AFTER_READ_ALL -> R.string.after_read_all_behavior_label
             Setting.MARK_ALL_READ_POSITION -> R.string.mark_all_read_button_position
