@@ -102,6 +102,18 @@ class SettingsRegistryTest {
     }
 
     @Test
+    fun `search finds compact mode under the article list layout`() {
+        val results = SettingsRegistry.search("compact", local, resolve)
+            .filter { it.setting != null }
+            .map { it.setting to it.path.joinToString(" > ") }
+
+        assertEquals(
+            listOf(Setting.COMPACT_MODE to "Article List > Layout"),
+            results,
+        )
+    }
+
+    @Test
     fun `search skips unavailable settings`() {
         val settings = SettingsRegistry.search("filters", feedbin, resolve).map { it.setting }
 
