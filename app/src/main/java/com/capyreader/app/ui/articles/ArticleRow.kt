@@ -7,6 +7,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import android.content.res.Configuration
+import android.text.format.DateUtils
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -144,7 +145,7 @@ fun ArticleRow(
                     if (article.title.isNotBlank()) {
                         Text(
                             article.title,
-                            maxLines = if (options.shortenTitles) 3 else Int.MAX_VALUE,
+                            maxLines = titleMaxLines(options.shortenTitles, options.compactMode),
                             overflow = TextOverflow.Ellipsis,
                             fontWeight = if (deEmphasizeFontWeight) FontWeight.Light else FontWeight.Bold,
                         )
@@ -194,11 +195,18 @@ fun ArticleRow(
                                 )
                             }
                             Text(
-                                text = relativeTime(
-                                    time = article.publishedAt,
-                                    currentTime = currentTime,
-                                    formats = LocalTimeFormats.current,
-                                ),
+                                text = if (options.compactMode) {
+                                    relativeDate(
+                                        time = article.publishedAt,
+                                        now = System.currentTimeMillis(),
+                                    )
+                                } else {
+                                    relativeTime(
+                                        time = article.publishedAt,
+                                        currentTime = currentTime,
+                                        formats = LocalTimeFormats.current,
+                                    )
+                                },
                                 color = feedNameColor,
                                 maxLines = 1,
                             )
@@ -674,6 +682,27 @@ fun ArticleRowPreview_Unread() {
 private fun Dp.relative(scale: ArticleListFontScale): Dp {
     return this * scale.relative
 }
+
+fun titleMaxLines(shortenTitles: Boolean, compact: Boolean): Int {
+    return when {
+        !shortenTitles -> Int.MAX_VALUE
+        compact -> COMPACT_TITLE_MAX_LINES
+        else -> TITLE_MAX_LINES
+    }
+}
+
+// The list's own clock only ticks every 30 minutes, which is too coarse for "5 min. ago".
+fun relativeDate(time: ZonedDateTime, now: Long): String {
+    return DateUtils.getRelativeTimeSpanString(
+        time.toInstant().toEpochMilli(),
+        now,
+        DateUtils.MINUTE_IN_MILLIS,
+        DateUtils.FORMAT_ABBREV_RELATIVE,
+    ).toString()
+}
+
+private const val TITLE_MAX_LINES = 3
+private const val COMPACT_TITLE_MAX_LINES = 2
 
 @Preview(locale = "ar")
 @Composable
