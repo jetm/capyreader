@@ -37,6 +37,8 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.capyreader.app.R
 import com.capyreader.app.preferences.AppPreferences
+import com.capyreader.app.ui.articles.list.pageScroll
+import com.capyreader.app.ui.articles.list.rememberPageScrollConnection
 import com.capyreader.app.ui.isSinglePane
 import com.jocmp.capy.Article
 import com.jocmp.capy.MarkRead
@@ -52,6 +54,7 @@ fun ArticleList(
     listState: LazyListState,
     onMarkAllRead: (range: MarkRead) -> Unit = {},
     enableMarkReadOnScroll: Boolean = false,
+    enablePageScroll: Boolean = false,
     dimReadArticles: Boolean = true,
     showNewArticles: Boolean = false,
     scrollToTop: () -> Unit = {},
@@ -66,6 +69,7 @@ fun ArticleList(
 
     Box(Modifier.fillMaxSize()) {
         key(listState) {
+            val pageScroll = rememberPageScrollConnection(listState = listState)
             ArticleListScrollbar(listState = listState) {
                 LazyColumn(
                     state = listState,
@@ -75,6 +79,7 @@ fun ArticleList(
                         .onGloballyPositioned { coordinates ->
                             listHeight = with(localDensity) { coordinates.size.height.toDp() }
                         }
+                        .then(if (enablePageScroll) Modifier.pageScroll(pageScroll) else Modifier)
                 ) {
                     items(count = articles.itemCount, key = articles.itemKey { it.id }) { index ->
                         val item = articles[index]
