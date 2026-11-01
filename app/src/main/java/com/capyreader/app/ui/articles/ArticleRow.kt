@@ -91,6 +91,7 @@ data class ArticleRowOptions(
     val shortenTitles: Boolean = true,
     val accentColors: Boolean = false,
     val dim: Boolean = true,
+    val compactMode: Boolean = false,
 )
 
 @Composable
@@ -126,6 +127,10 @@ fun ArticleRow(
         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         setArticleMenuOpen(true)
     }
+
+    val showsSummary = article.summary.isNotBlank() && options.showSummary
+    val showsLargeImage = imageURL != null && options.imagePreview == ImagePreview.LARGE
+    val hideSupportingContent = options.compactMode && !showsSummary && !showsLargeImage
 
     StyleProviders(options) {
         ArticleBox(
@@ -200,21 +205,25 @@ fun ArticleRow(
                         }
                     }
                 },
-                supportingContent = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    ) {
-                        if (article.summary.isNotBlank() && options.showSummary) {
-                            Text(
-                                text = article.summary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                fontWeight = if (deEmphasizeFontWeight) FontWeight.Light else null,
-                            )
-                        }
-                        if (imageURL != null && options.imagePreview == ImagePreview.LARGE) {
-                            ArticleImage(imageURL = imageURL, imagePreview = options.imagePreview)
+                supportingContent = if (hideSupportingContent) {
+                    null
+                } else {
+                    {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        ) {
+                            if (showsSummary) {
+                                Text(
+                                    text = article.summary,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontWeight = if (deEmphasizeFontWeight) FontWeight.Light else null,
+                                )
+                            }
+                            if (showsLargeImage) {
+                                ArticleImage(imageURL = imageURL, imagePreview = options.imagePreview)
+                            }
                         }
                     }
                 },
@@ -236,7 +245,8 @@ fun ArticleRow(
                 } else {
                     null
                 },
-                colors = colors
+                colors = colors,
+                compact = options.compactMode,
             )
 
             val articleActions = LocalArticleActions.current
