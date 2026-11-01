@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ListItemColors
@@ -28,15 +29,20 @@ fun ArticleListItem(
     supportingContent: @Composable() (() -> Unit)? = null,
     leadingContent: @Composable() (() -> Unit)? = null,
     trailingContent: @Composable() (() -> Unit)? = null,
-    colors: ListItemColors = ListItemDefaults.colors()
+    colors: ListItemColors = ListItemDefaults.colors(),
+    compact: Boolean = false,
 ) {
     Surface(
         color = colors.containerColor,
     ) {
         val leadingSize = 16.dp
 
+        val verticalSpacing = if (compact) CompactVerticalSpacing else VerticalSpacing
+        val topPadding = if (compact) CompactTopPadding else TopPadding
+        val bottomPadding = if (compact) CompactBottomPadding else BottomPadding
+
         val overlineStartPadding = if (leadingContent != null) {
-            leadingSize + VerticalPadding
+            leadingSize + verticalSpacing
         } else {
             0.dp
         }
@@ -44,11 +50,12 @@ fun ArticleListItem(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(if (compact) Modifier.heightIn(min = CompactMinHeight) else Modifier)
                 .padding(
-                    top = TopPadding,
+                    top = topPadding,
                     start = VerticalPadding,
-                    end = VerticalSpacing + 4.dp,
-                    bottom = BottomPadding,
+                    end = verticalSpacing + 4.dp,
+                    bottom = bottomPadding,
                 )
         ) {
             overlineContent?.let {
@@ -61,7 +68,7 @@ fun ArticleListItem(
                 }
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(VerticalSpacing)
+                horizontalArrangement = Arrangement.spacedBy(verticalSpacing)
             ) {
                 leadingContent?.let {
                     Column(Modifier.size(leadingSize)) { it() }
@@ -103,6 +110,14 @@ private val VerticalPadding = 16.dp
 private val TopPadding = 8.dp
 
 private val BottomPadding = 16.dp
+
+private val CompactVerticalSpacing = 8.dp
+
+private val CompactTopPadding = 4.dp
+
+private val CompactBottomPadding = 4.dp
+
+private val CompactMinHeight = 48.dp
 
 @Composable
 private fun ProvideTextStyleFromToken(
