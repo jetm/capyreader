@@ -27,6 +27,7 @@ import com.capyreader.app.ui.settings.panels.MarkAllReadPositionRow
 import com.capyreader.app.ui.settings.panels.MarkReadOnScrollRow
 import com.capyreader.app.ui.settings.panels.OPMLExportRow
 import com.capyreader.app.ui.settings.panels.OPMLImportRow
+import com.capyreader.app.ui.settings.panels.PageScrollRow
 import com.capyreader.app.ui.settings.panels.PageTurnKeysRow
 import com.capyreader.app.ui.settings.panels.PinToolbarsRow
 import com.capyreader.app.ui.settings.panels.PureBlackRow
@@ -79,6 +80,7 @@ fun SettingContent(
         Setting.LIST_SWIPE_UP -> ListSwipeUpRow()
         Setting.BACK_ACTION -> BackActionRow()
         Setting.MARK_READ_ON_SCROLL -> MarkReadOnScrollRow()
+        Setting.PAGE_SCROLL -> PageScrollRow()
         Setting.CONFIRM_MARK_ALL_READ -> ConfirmMarkAllReadRow()
         Setting.AFTER_READ_ALL -> AfterReadAllRow()
         Setting.MARK_ALL_READ_POSITION -> MarkAllReadPositionRow()
