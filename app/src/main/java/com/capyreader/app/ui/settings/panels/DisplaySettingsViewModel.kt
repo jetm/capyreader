@@ -41,6 +41,8 @@ class DisplaySettingsViewModel(
 
     private val _shortenTitles = mutableStateOf(appPreferences.articleListOptions.shortenTitles.get())
 
+    private val _compactMode = mutableStateOf(appPreferences.articleListOptions.compactMode.get())
+
     var fontScale by mutableStateOf(appPreferences.articleListOptions.fontScale.get())
         private set
 
@@ -61,6 +63,9 @@ class DisplaySettingsViewModel(
 
     val shortenTitles: Boolean
         get() = _shortenTitles.value
+
+    val compactMode: Boolean
+        get() = _compactMode.value
 
     val pinArticleBars = appPreferences.readerOptions.pinToolbars
 
@@ -126,6 +131,12 @@ class DisplaySettingsViewModel(
         appPreferences.articleListOptions.shortenTitles.set(shortenTitles)
 
         _shortenTitles.value = shortenTitles
+    }
+
+    fun updateCompactMode(compactMode: Boolean) {
+        appPreferences.articleListOptions.compactMode.set(compactMode)
+
+        _compactMode.value = compactMode
     }
 
     fun updateBadgeStyle(style: BadgeStyle) {

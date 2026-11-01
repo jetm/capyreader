@@ -70,6 +70,7 @@ fun ArticleListPreviewRow(viewModel: DisplaySettingsViewModel = koinViewModel())
             imagePreview = viewModel.imagePreview,
             fontScale = viewModel.fontScale,
             shortenTitles = viewModel.shortenTitles,
+            compactMode = viewModel.compactMode,
             dim = false,
         )
     )
@@ -147,6 +148,17 @@ fun ShortenTitlesRow(viewModel: DisplaySettingsViewModel = koinViewModel()) {
             onCheckedChange = viewModel::updateShortenTitles,
             checked = viewModel.shortenTitles,
             title = stringResource(R.string.settings_article_list_shorten_titles)
+        )
+    }
+}
+
+@Composable
+fun CompactModeRow(viewModel: DisplaySettingsViewModel = koinViewModel()) {
+    RowItem {
+        TextSwitch(
+            onCheckedChange = viewModel::updateCompactMode,
+            checked = viewModel.compactMode,
+            title = stringResource(R.string.settings_article_list_compact_mode)
         )
     }
 }
@@ -291,6 +303,7 @@ private fun PreviewArticleRow(rowOptions: ArticleRowOptions) {
                 )
         ) {
         ArticleListItem(
+            compact = rowOptions.compactMode,
             headlineContent = {
                 Text(
                     text = PREVIEW_TITLE,

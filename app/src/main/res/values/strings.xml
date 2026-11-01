@@ -178,6 +178,7 @@
     <string name="settings_article_list_feed_icons">Feed Icons</string>
     <string name="settings_article_list_summary">Summary</string>
     <string name="settings_article_list_shorten_titles">Shorten titles</string>
+    <string name="settings_article_list_compact_mode">Compact mode</string>
     <string name="settings_section_version">Version</string>
     <string name="settings_option_copy_version">Copy version</string>
     <string name="settings_option_full_content_title">Sticky Full Content</string>
