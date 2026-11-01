@@ -34,6 +34,17 @@ class PageScrollTest {
             minFlingVelocity = 50f,
         )
 
+    private fun zone(x: Float) =
+        tapZoneDirection(x = x, width = 1000f, edgeFraction = 0.25f)
+
+    private fun tap(distance: Float, duration: Long) =
+        isTap(
+            distancePixels = distance,
+            durationMillis = duration,
+            touchSlopPixels = 8f,
+            longPressMillis = 400L,
+        )
+
     private fun consumes(
         isUserInput: Boolean = true,
         delta: Float = -50f,
@@ -255,5 +266,43 @@ class PageScrollTest {
     @Test
     fun `a long drag wins over an opposite fling`() {
         assertEquals(PageDirection.FORWARD, direction(-200f, 80f))
+    }
+
+    @Test
+    fun `a tap in the left quarter turns back`() {
+        assertEquals(PageDirection.BACK, zone(0f))
+        assertEquals(PageDirection.BACK, zone(249f))
+    }
+
+    @Test
+    fun `a tap in the middle half turns nothing`() {
+        assertNull(zone(250f))
+        assertNull(zone(500f))
+        assertNull(zone(750f))
+    }
+
+    @Test
+    fun `a tap in the right quarter turns forward`() {
+        assertEquals(PageDirection.FORWARD, zone(751f))
+        assertEquals(PageDirection.FORWARD, zone(1000f))
+    }
+
+    @Test
+    fun `a tap in a list with no width turns nothing`() {
+        assertNull(tapZoneDirection(x = 10f, width = 0f, edgeFraction = 0.25f))
+    }
+
+    @Test
+    fun `a short still press is a tap`() {
+        assertTrue(tap(0f, 100))
+        assertTrue(tap(8f, 100))
+        assertTrue(tap(0f, 400))
+    }
+
+    @Test
+    fun `a press that moved or lingered is not a tap`() {
+        assertFalse(tap(9f, 100))
+        assertFalse(tap(0f, 401))
+        assertFalse(tap(20f, 600))
     }
 }
