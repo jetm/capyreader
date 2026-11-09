@@ -19,6 +19,7 @@ import com.jocmp.minifluxclient.CreateFeedRequest
 import com.jocmp.minifluxclient.CreateFeedResponse
 import com.jocmp.minifluxclient.Enclosure
 import com.jocmp.minifluxclient.Entry
+import com.jocmp.minifluxclient.EntryIDsResponse
 import com.jocmp.minifluxclient.EntryResultSet
 import com.jocmp.minifluxclient.EntryStatus
 import com.jocmp.minifluxclient.Feed
@@ -180,6 +181,9 @@ class MinifluxAccountDelegateTest {
         database = InMemoryDatabaseProvider.build(accountID)
         feedFixture = FeedFixture(database)
         miniflux = mockk()
+        coEvery { miniflux.entryIDs(any(), any(), any(), any()) }.returns(
+            Response.error(404, "Not Found".toResponseBody())
+        )
         delegate = MinifluxAccountDelegate(database, miniflux, AccountPreferences(InMemoryDataStore()))
     }
 
@@ -371,6 +375,303 @@ class MinifluxAccountDelegateTest {
         unread.forEach { entry ->
             assertEquals(expected = false, actual = records.find(entry.id.toString())?.read)
         }
+    }
+
+    private fun stubRefreshBasics(changed: List<Entry> = emptyList()) {
+        coEvery { miniflux.feeds() }.returns(Response.success(feeds))
+        coEvery { miniflux.icon(1) }.returns(
+            Response.success(IconData(id = 1, data = "image/png;base64,abc", mime_type = "image/png"))
+        )
+        coEvery {
+            miniflux.entries(
+                limit = 250,
+                offset = 0,
+                order = "published_at",
+                direction = "desc",
+                changedAfter = null,
+            )
+        }.returns(Response.success(EntryResultSet(total = changed.size, entries = changed)))
+    }
+
+    private fun stubEntryIDs(
+        status: String? = null,
+        starred: Boolean? = null,
+        limit: Int = 10_000,
+        offset: Int = 0,
+        response: Response<EntryIDsResponse>,
+    ) {
+        coEvery { miniflux.entryIDs(status, starred, limit, offset) }.returns(response)
+    }
+
+    private fun stubBothIDListings(
+        unread: List<Long> = emptyList(),
+        starred: List<Long> = emptyList(),
+    ) {
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.success(EntryIDsResponse(total = unread.size, entry_ids = unread))
+        )
+        stubEntryIDs(
+            starred = true,
+            response = Response.success(EntryIDsResponse(total = starred.size, entry_ids = starred))
+        )
+    }
+
+    private fun stubEmptyFullListings() {
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+    }
+
+    private fun createLocalUnreadArticle() = ArticleFixture(database).create(
+        feed = feedFixture.create(feedID = arsTechnicaFeed.id.toString()),
+        read = false,
+    )
+
+    @Test
+    fun refresh_usesIDsOnlyListingForUnreadAndStarred() = runTest {
+        stubRefreshBasics()
+        stubBothIDListings(unread = listOf(1L), starred = listOf(2L))
+        coEvery { miniflux.entry(1L) } returns Response.success(arsTechnicaArticle.copy(id = 1L, hash = "h1"))
+        coEvery { miniflux.entry(2L) } returns
+            Response.success(arsTechnicaArticle.copy(id = 2L, hash = "h2", status = EntryStatus.READ, starred = true))
+
+        delegate.refresh(ArticleFilter.default())
+
+        coVerify(exactly = 1) {
+            miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 0)
+        }
+        coVerify(exactly = 1) { miniflux.entryIDs(null, true, 10_000, 0) }
+        coVerify(exactly = 0) {
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0)
+        }
+        coVerify(exactly = 0) { miniflux.entries(starred = true, limit = 250, offset = 0) }
+        coVerify(exactly = 1) {
+            miniflux.entries(
+                limit = 250,
+                offset = 0,
+                order = "published_at",
+                direction = "desc",
+                changedAfter = null,
+            )
+        }
+    }
+
+    @Test
+    fun refresh_pagesIDsListingByIDsReceived() = runTest {
+        val ids = (1L..5L).toList()
+        val unread = ids.map { arsTechnicaArticle.copy(id = it, hash = "hash$it") }
+        stubRefreshBasics(changed = unread)
+        stubEntryIDs(
+            starred = true,
+            response = Response.success(EntryIDsResponse(total = 0, entry_ids = emptyList()))
+        )
+        listOf(0, 2, 4).forEach { offset ->
+            stubEntryIDs(
+                status = EntryStatus.UNREAD.value,
+                offset = offset,
+                response = Response.success(
+                    EntryIDsResponse(total = 5, entry_ids = ids.drop(offset).take(2))
+                )
+            )
+        }
+
+        delegate.refresh(ArticleFilter.default())
+
+        coVerifyOrder {
+            miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 0)
+            miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 2)
+            miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 4)
+        }
+
+        val records = ArticleRecords(database)
+        ids.forEach { id ->
+            assertEquals(expected = false, actual = records.find(id.toString())?.read)
+        }
+    }
+
+    @Test
+    fun refresh_requestsAtMost10000IDsPerPage() = runTest {
+        stubRefreshBasics()
+        stubBothIDListings()
+
+        delegate.refresh(ArticleFilter.default())
+
+        assertEquals(10_000, MinifluxAccountDelegate.MAX_ENTRY_IDS_LIMIT)
+        coVerify(exactly = 1) { miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 0) }
+        coVerify(exactly = 1) { miniflux.entryIDs(null, true, 10_000, 0) }
+        coVerify(exactly = 0) { miniflux.entryIDs(any(), any(), more(10_000), any()) }
+    }
+
+    @Test
+    fun refresh_emptyIDsListMarksLocalArticlesRead() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubBothIDListings()
+
+        delegate.refresh(ArticleFilter.default())
+
+        assertEquals(expected = true, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
+    fun refresh_entryBodyInsteadOfIDListFallsBackWithoutClearingState() = runTest {
+        stubRefreshBasics(changed = listOf(arsTechnicaArticle))
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.success(EntryIDsResponse())
+        )
+        stubEntryIDs(starred = true, response = Response.success(EntryIDsResponse()))
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 1, entries = listOf(arsTechnicaArticle)))
+        )
+        val local = ArticleFixture(database).create(
+            id = arsTechnicaArticle.id.toString(),
+            feed = feedFixture.create(feedID = arsTechnicaFeed.id.toString()),
+            read = false,
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isSuccess)
+        coVerify { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
+    fun refresh_listingNotFoundFallsBack() = runTest {
+        stubRefreshBasics(changed = listOf(arsTechnicaArticle))
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.error(404, "Not Found".toResponseBody())
+        )
+        stubEntryIDs(starred = true, response = Response.error(404, "Not Found".toResponseBody()))
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 1, entries = listOf(arsTechnicaArticle)))
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isSuccess)
+        coVerify { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }
+        assertEquals(
+            expected = false,
+            actual = ArticleRecords(database).find(arsTechnicaArticle.id.toString())?.read
+        )
+    }
+
+    @Test
+    fun refresh_listingBadRequestFallsBack() = runTest {
+        stubRefreshBasics(changed = listOf(arsTechnicaArticle))
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.error(400, "Bad Request".toResponseBody())
+        )
+        stubEntryIDs(starred = true, response = Response.error(400, "Bad Request".toResponseBody()))
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 1, entries = listOf(arsTechnicaArticle)))
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isSuccess)
+        assertEquals(
+            expected = false,
+            actual = ArticleRecords(database).find(arsTechnicaArticle.id.toString())?.read
+        )
+    }
+
+    @Test
+    fun refresh_doesNotAskForUnsupportedListingAgain() = runTest {
+        var listingCalls = 0
+        stubRefreshBasics()
+        stubEmptyFullListings()
+        coEvery {
+            miniflux.entries(
+                limit = 250,
+                offset = 0,
+                order = "published_at",
+                direction = "desc",
+                changedAfter = any(),
+            )
+        }.returns(Response.success(EntryResultSet(total = 0, entries = emptyList())))
+        coEvery { miniflux.entryIDs(any(), any(), any(), any()) } answers {
+            listingCalls++
+            Response.error(404, "Not Found".toResponseBody())
+        }
+
+        delegate.refresh(ArticleFilter.default())
+        val callsAfterFirst = listingCalls
+        delegate.refresh(ArticleFilter.default())
+
+        assertTrue(callsAfterFirst > 0)
+        assertEquals(expected = callsAfterFirst, actual = listingCalls)
+    }
+
+    @Test
+    fun refresh_listingServerErrorKeepsLocalState() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.error(500, "Internal Server Error".toResponseBody())
+        )
+        stubEntryIDs(
+            starred = true,
+            response = Response.success(EntryIDsResponse(total = 0, entry_ids = emptyList()))
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isFailure)
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+        coVerify(exactly = 0) {
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0)
+        }
+    }
+
+    @Test
+    fun refresh_listingAuthErrorReportsUnauthorized() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.error(401, "Unauthorized".toResponseBody())
+        )
+        stubEntryIDs(starred = true, response = Response.error(401, "Unauthorized".toResponseBody()))
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.exceptionOrNull() is UnauthorizedError)
+        val record = ArticleRecords(database).find(local.id)
+        assertEquals(expected = false, actual = record?.read)
+        assertEquals(expected = false, actual = record?.starred)
+    }
+
+    @Test
+    fun refresh_fetchesListedEntriesMissingLocally() = runTest {
+        stubRefreshBasics()
+        stubBothIDListings(unread = listOf(arsTechnicaArticle.id))
+        coEvery { miniflux.entry(arsTechnicaArticle.id) }.returns(Response.success(arsTechnicaArticle))
+
+        delegate.refresh(ArticleFilter.default())
+
+        coVerify(exactly = 1) { miniflux.entry(arsTechnicaArticle.id) }
+        val article = ArticleRecords(database).find(arsTechnicaArticle.id.toString())
+        assertNotNull(article)
+        assertEquals(expected = false, actual = article.read)
     }
 
     @Test
