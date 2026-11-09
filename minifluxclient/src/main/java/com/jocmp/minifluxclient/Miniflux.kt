@@ -59,6 +59,14 @@ interface Miniflux {
         @Query("changed_after") changedAfter: Long? = null,
     ): Response<EntryResultSet>
 
+    @GET("entries/ids")
+    suspend fun entryIDs(
+        @Query("status") status: String? = null,
+        @Query("starred") starred: Boolean? = null,
+        @Query("limit") limit: Int? = null,
+        @Query("offset") offset: Int? = null,
+    ): Response<EntryIDsResponse>
+
     @GET("feeds/{feedID}/entries")
     suspend fun feedEntries(
         @Path("feedID") feedID: Long,
