@@ -52,6 +52,9 @@ internal class MinifluxAccountDelegate(
     private val feedRecords = FeedRecords(database)
     private val taggingRecords = TaggingRecords(database)
 
+    @Volatile
+    private var bulkStarUnsupported = false
+
     override suspend fun refresh(filter: ArticleFilter, cutoffDate: ZonedDateTime?): Result<Unit> {
         val startedAt = TimeHelpers.nowUTC()
 
@@ -112,14 +115,31 @@ internal class MinifluxAccountDelegate(
     }
 
     /**
-     * Miniflux only offers a toggle, so read each entry first and flip only the
-     * ones not already in the requested state. A blind toggle inverts entries
-     * that a partially failed earlier attempt already changed.
+     * Newer Miniflux servers set the starred state for a whole batch in one request.
+     * Servers before 2.3.2 reject that with a 400, so fall back to reading each entry
+     * first and flipping only the ones not already in the requested state. A blind
+     * toggle inverts entries that a partially failed earlier attempt already changed.
      */
     private suspend fun setStarred(articleIDs: List<String>, starred: Boolean): Result<Unit> {
         val entryIDs = articleIDs.map { it.toLong() }
 
         return withErrorHandling {
+            if (!bulkStarUnsupported) {
+                val bulk = miniflux.updateEntries(
+                    UpdateEntriesRequest(entry_ids = entryIDs, starred = starred)
+                )
+
+                if (bulk.isSuccessful) {
+                    return@withErrorHandling Unit
+                }
+
+                if (bulk.code() == 400) {
+                    bulkStarUnsupported = true
+                } else {
+                    bulk.orThrow()
+                }
+            }
+
             entryIDs.forEach { entryID ->
                 val response = miniflux.entry(entryID)
 
