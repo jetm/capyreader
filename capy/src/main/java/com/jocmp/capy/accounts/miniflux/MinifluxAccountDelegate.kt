@@ -55,6 +55,9 @@ internal class MinifluxAccountDelegate(
     @Volatile
     private var bulkStarUnsupported = false
 
+    @Volatile
+    private var entryIDsUnsupported = false
+
     override suspend fun refresh(filter: ArticleFilter, cutoffDate: ZonedDateTime?): Result<Unit> {
         val startedAt = TimeHelpers.nowUTC()
 
@@ -359,13 +362,7 @@ internal class MinifluxAccountDelegate(
     }
 
     private suspend fun refreshStarredEntries(): List<String> {
-        val ids = fetchAllEntryIDs { offset ->
-            val body = miniflux.entries(starred = true, limit = MAX_ENTRY_LIMIT, offset = offset)
-                .orThrow()
-                .body()
-
-            body?.let { IDPage(it.total, it.entries.map { entry -> entry.id.toString() }) }
-        }
+        val ids = fetchEntryIDs(starred = true)
 
         articleRecords.markAllStarred(articleIDs = ids)
 
@@ -373,9 +370,69 @@ internal class MinifluxAccountDelegate(
     }
 
     private suspend fun refreshUnreadEntries(): List<String> {
-        val ids = fetchAllEntryIDs { offset ->
+        val ids = fetchEntryIDs(status = EntryStatus.UNREAD)
+
+        articleRecords.markAllUnread(articleIDs = ids)
+
+        return ids
+    }
+
+    /**
+     * Uses the IDs-only listing when the server has it and falls back to the full-entry
+     * listing when it does not. A missing list is never returned as an empty list, because
+     * applying an empty list marks every local article read or unstarred.
+     */
+    private suspend fun fetchEntryIDs(
+        status: EntryStatus? = null,
+        starred: Boolean? = null
+    ): List<String> {
+        if (!entryIDsUnsupported) {
+            val firstResponse = miniflux.entryIDs(
+                status = status?.value,
+                starred = starred,
+                limit = MAX_ENTRY_IDS_LIMIT,
+                offset = 0
+            )
+            val firstIDs = if (firstResponse.isSuccessful) firstResponse.body() else null
+            val firstEntryIDs = firstIDs?.entry_ids
+
+            if (firstIDs != null && firstEntryIDs != null) {
+                val firstIDPage = IDPage(
+                    total = firstIDs.total ?: firstEntryIDs.size,
+                    ids = firstEntryIDs.map { it.toString() }
+                )
+
+                return fetchAllEntryIDs { offset ->
+                    if (offset == 0) {
+                        firstIDPage
+                    } else {
+                        val body = miniflux.entryIDs(
+                            status = status?.value,
+                            starred = starred,
+                            limit = MAX_ENTRY_IDS_LIMIT,
+                            offset = offset
+                        )
+                            .orThrow()
+                            .body()
+                        val entryIDs = body?.entry_ids
+                            ?: throw IOException("Miniflux entry IDs page at offset $offset has no entry_ids")
+
+                        IDPage(body.total ?: entryIDs.size, entryIDs.map { it.toString() })
+                    }
+                }
+            }
+
+            if (firstResponse.isSuccessful || firstResponse.code() == 400 || firstResponse.code() == 404) {
+                entryIDsUnsupported = true
+            } else {
+                firstResponse.orThrow()
+            }
+        }
+
+        return fetchAllEntryIDs { offset ->
             val body = miniflux.entries(
-                status = EntryStatus.UNREAD.value,
+                status = status?.value,
+                starred = starred,
                 limit = MAX_ENTRY_LIMIT,
                 offset = offset
             )
@@ -384,10 +441,6 @@ internal class MinifluxAccountDelegate(
 
             body?.let { IDPage(it.total, it.entries.map { entry -> entry.id.toString() }) }
         }
-
-        articleRecords.markAllUnread(articleIDs = ids)
-
-        return ids
     }
 
     private suspend fun fetchAllEntryIDs(
@@ -593,6 +646,7 @@ internal class MinifluxAccountDelegate(
 
     companion object {
         const val MAX_ENTRY_LIMIT = 250
+        const val MAX_ENTRY_IDS_LIMIT = 10_000
         private const val MAX_CONCURRENT_FETCHES = 4
         private val CHANGED_AFTER_OVERLAP = 5.minutes
     }
