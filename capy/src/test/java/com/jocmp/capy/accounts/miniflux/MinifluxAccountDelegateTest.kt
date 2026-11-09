@@ -510,17 +510,143 @@ class MinifluxAccountDelegateTest {
         val flips = mutableListOf<Long>()
     }
 
+    @Test
+    fun addStar_sendsOneBulkRequestWithStarredTrue() = runTest {
+        val server = stubStarServer(
+            mapOf(1L to false, 2L to false, 3L to false),
+            bulkSupported = true,
+        )
+
+        val result = delegate.addStar(listOf("1", "2", "3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(mapOf(1L to true, 2L to true, 3L to true), server.starred)
+        coVerify(exactly = 1) {
+            miniflux.updateEntries(
+                UpdateEntriesRequest(entry_ids = listOf(1L, 2L, 3L), starred = true)
+            )
+        }
+        coVerify(exactly = 1) { miniflux.updateEntries(any()) }
+        coVerify(exactly = 0) { miniflux.entry(any()) }
+        coVerify(exactly = 0) { miniflux.toggleBookmark(any()) }
+    }
+
+    @Test
+    fun removeStar_sendsOneBulkRequestWithStarredFalse() = runTest {
+        val server = stubStarServer(
+            mapOf(1L to true, 2L to true, 3L to true),
+            bulkSupported = true,
+        )
+
+        val result = delegate.removeStar(listOf("1", "2", "3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(mapOf(1L to false, 2L to false, 3L to false), server.starred)
+        coVerify(exactly = 1) {
+            miniflux.updateEntries(
+                UpdateEntriesRequest(entry_ids = listOf(1L, 2L, 3L), starred = false)
+            )
+        }
+        coVerify(exactly = 1) { miniflux.updateEntries(any()) }
+        coVerify(exactly = 0) { miniflux.entry(any()) }
+        coVerify(exactly = 0) { miniflux.toggleBookmark(any()) }
+    }
+
+    @Test
+    fun addStar_serverRejectsBulkRequestWith400FallsBackAndCompletes() = runTest {
+        val server = stubStarServer(mapOf(1L to false, 2L to true, 3L to false))
+
+        val result = delegate.addStar(listOf("1", "2", "3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(mapOf(1L to true, 2L to true, 3L to true), server.starred)
+        assertEquals(listOf(1L, 3L), server.flips)
+        coVerify(exactly = 1) { miniflux.updateEntries(any()) }
+    }
+
+    @Test
+    fun addStar_afterRejectionDoesNotSendBulkRequestAgain() = runTest {
+        val server = stubStarServer(mapOf(1L to false, 2L to false, 3L to false))
+
+        val first = delegate.addStar(listOf("1"))
+        val second = delegate.addStar(listOf("2", "3"))
+
+        assertTrue(first.isSuccess)
+        assertTrue(second.isSuccess)
+        assertEquals(mapOf(1L to true, 2L to true, 3L to true), server.starred)
+        coVerify(exactly = 1) { miniflux.updateEntries(any()) }
+    }
+
+    @Test
+    fun addStar_serverErrorOnBulkRequestReportsFailureWithoutFallback() = runTest {
+        stubStarServer(mapOf(1L to false))
+        coEvery { miniflux.updateEntries(any()) } returns
+            Response.error(500, "Internal Server Error".toResponseBody())
+
+        val result = delegate.addStar(listOf("1"))
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { miniflux.entry(any()) }
+        coVerify(exactly = 0) { miniflux.toggleBookmark(any()) }
+    }
+
+    @Test
+    fun addStar_authErrorOnBulkRequestReportsFailureWithoutFallback() = runTest {
+        stubStarServer(mapOf(1L to false))
+        coEvery { miniflux.updateEntries(any()) } returns
+            Response.error(401, "Unauthorized".toResponseBody())
+
+        val result = delegate.addStar(listOf("1"))
+
+        assertTrue(result.isFailure)
+        coVerify(exactly = 0) { miniflux.entry(any()) }
+        coVerify(exactly = 0) { miniflux.toggleBookmark(any()) }
+    }
+
+    @Test
+    fun addStar_bulkRequestWithDeletedEntryReportsSuccess() = runTest {
+        val server = stubStarServer(mapOf(1L to false, 3L to false), bulkSupported = true)
+
+        val result = delegate.addStar(listOf("1", "2", "3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(mapOf(1L to true, 3L to true), server.starred)
+        coVerify(exactly = 1) { miniflux.updateEntries(any()) }
+        coVerify(exactly = 0) { miniflux.entry(any()) }
+    }
+
     /**
-     * Stands in for a Miniflux server whose only star operation is a toggle.
-     * IDs missing from [initial] answer 404. When [failOnFlip] is set, that
-     * toggle call (1-based, counted across calls) times out without flipping.
+     * Stands in for a Miniflux server. Its toggle always works. When
+     * [bulkSupported] is true the starred-only update applies to the named IDs
+     * and ignores unknown ones, as 2.3.5 does; otherwise it answers 400 as
+     * 2.2.17 does. IDs missing from [initial] answer 404 on read. When
+     * [failOnFlip] is set, that toggle call (1-based, counted across calls)
+     * times out without flipping.
      */
     private fun stubStarServer(
         initial: Map<Long, Boolean>,
         failOnFlip: Int? = null,
+        bulkSupported: Boolean = false,
     ): StarServer {
         val server = StarServer(initial)
         var flipCalls = 0
+
+        coEvery { miniflux.updateEntries(any()) } answers {
+            val request = firstArg<UpdateEntriesRequest>()
+
+            if (bulkSupported) {
+                request.entry_ids.filter { it in server.starred }.forEach { id ->
+                    server.starred[id] = request.starred ?: server.starred.getValue(id)
+                }
+                Response.success(Unit)
+            } else {
+                Response.error(
+                    400,
+                    """{"error_message":"invalid entry status, valid status values are: \"read\", \"unread\" and \"removed\""}"""
+                        .toResponseBody()
+                )
+            }
+        }
 
         coEvery { miniflux.entry(any()) } answers {
             val id = firstArg<Long>()
