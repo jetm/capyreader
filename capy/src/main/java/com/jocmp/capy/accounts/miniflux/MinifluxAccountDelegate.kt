@@ -23,7 +23,6 @@ import com.jocmp.capy.persistence.TaggingRecords
 import com.jocmp.minifluxclient.CreateCategoryRequest
 import com.jocmp.minifluxclient.CreateFeedRequest
 import com.jocmp.minifluxclient.Entry
-import com.jocmp.minifluxclient.EntryResultSet
 import com.jocmp.minifluxclient.EntryStatus
 import com.jocmp.minifluxclient.Miniflux
 import com.jocmp.minifluxclient.UpdateCategoryRequest
@@ -37,7 +36,6 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import okio.IOException
 import retrofit2.HttpException
-import retrofit2.Response
 import java.time.ZonedDateTime
 import kotlin.time.Duration.Companion.minutes
 import com.jocmp.minifluxclient.Feed as MinifluxFeed
