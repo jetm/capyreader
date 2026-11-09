@@ -104,22 +104,35 @@ internal class MinifluxAccountDelegate(
     }
 
     override suspend fun addStar(articleIDs: List<String>): Result<Unit> {
-        val entryIDs = articleIDs.map { it.toLong() }
-
-        return withErrorHandling {
-            entryIDs.forEach { entryID ->
-                miniflux.toggleBookmark(entryID).orThrow()
-            }
-            Unit
-        }
+        return setStarred(articleIDs, starred = true)
     }
 
     override suspend fun removeStar(articleIDs: List<String>): Result<Unit> {
+        return setStarred(articleIDs, starred = false)
+    }
+
+    /**
+     * Miniflux only offers a toggle, so read each entry first and flip only the
+     * ones not already in the requested state. A blind toggle inverts entries
+     * that a partially failed earlier attempt already changed.
+     */
+    private suspend fun setStarred(articleIDs: List<String>, starred: Boolean): Result<Unit> {
         val entryIDs = articleIDs.map { it.toLong() }
 
         return withErrorHandling {
             entryIDs.forEach { entryID ->
-                miniflux.toggleBookmark(entryID).orThrow()
+                val response = miniflux.entry(entryID)
+
+                if (response.code() == 404) {
+                    return@forEach
+                }
+
+                val entry = response.orThrow().body()
+                    ?: throw IOException("Empty body for entry $entryID")
+
+                if (entry.starred != starred) {
+                    miniflux.toggleBookmark(entryID).orThrow()
+                }
             }
             Unit
         }

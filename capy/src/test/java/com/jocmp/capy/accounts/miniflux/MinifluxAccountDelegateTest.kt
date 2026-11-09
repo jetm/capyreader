@@ -430,25 +430,123 @@ class MinifluxAccountDelegateTest {
     }
 
     @Test
-    fun addStar() = runTest {
-        val id = 777L
+    fun addStar_flipsOnlyEntriesThatAreNotStarred() = runTest {
+        val server = stubStarServer(mapOf(1L to false, 2L to true, 3L to false))
 
-        coEvery { miniflux.toggleBookmark(any()) } returns Response.success(Unit)
+        val result = delegate.addStar(listOf("1", "2", "3"))
 
-        delegate.addStar(listOf(id.toString()))
-
-        coVerify { miniflux.toggleBookmark(id) }
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1L, 3L), server.flips)
+        assertEquals(mapOf(1L to true, 2L to true, 3L to true), server.starred)
     }
 
     @Test
-    fun removeStar() = runTest {
-        val id = 777L
+    fun removeStar_flipsOnlyEntriesThatAreStarred() = runTest {
+        val server = stubStarServer(mapOf(1L to true, 2L to false, 3L to true))
 
-        coEvery { miniflux.toggleBookmark(any()) } returns Response.success(Unit)
+        val result = delegate.removeStar(listOf("1", "2", "3"))
 
-        delegate.removeStar(listOf(id.toString()))
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1L, 3L), server.flips)
+        assertEquals(mapOf(1L to false, 2L to false, 3L to false), server.starred)
+    }
 
-        coVerify { miniflux.toggleBookmark(id) }
+    @Test
+    fun addStar_retryAfterPartialFailureDoesNotInvertStars() = runTest {
+        val server = stubStarServer(
+            mapOf(1L to false, 2L to false, 3L to false),
+            failOnFlip = 2,
+        )
+        val ids = listOf("1", "2", "3")
+
+        val first = delegate.addStar(ids)
+        val second = delegate.addStar(ids)
+
+        assertTrue(first.isFailure)
+        assertTrue(second.isSuccess)
+        assertEquals(mapOf(1L to true, 2L to true, 3L to true), server.starred)
+        assertEquals(listOf(1L, 2L, 3L), server.flips)
+    }
+
+    @Test
+    fun removeStar_forEntryThatWasNeverStarredSendsNoFlip() = runTest {
+        val server = stubStarServer(mapOf(1L to false))
+
+        val result = delegate.removeStar(listOf("1"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(emptyList(), server.flips)
+        coVerify(exactly = 0) { miniflux.toggleBookmark(any()) }
+        assertEquals(mapOf(1L to false), server.starred)
+    }
+
+    @Test
+    fun addStar_skipsEntryThatNoLongerExists() = runTest {
+        val server = stubStarServer(mapOf(1L to false, 3L to false))
+
+        val result = delegate.addStar(listOf("1", "2", "3"))
+
+        assertTrue(result.isSuccess)
+        assertEquals(listOf(1L, 3L), server.flips)
+        assertEquals(mapOf(1L to true, 3L to true), server.starred)
+    }
+
+    @Test
+    fun addStar_serverErrorOnReadReportsFailure() = runTest {
+        val server = stubStarServer(mapOf(1L to false))
+        coEvery { miniflux.entry(1L) } returns
+            Response.error(500, "Internal Server Error".toResponseBody())
+
+        val result = delegate.addStar(listOf("1"))
+
+        assertTrue(result.isFailure)
+        assertEquals(emptyList(), server.flips)
+        coVerify(exactly = 0) { miniflux.toggleBookmark(1L) }
+        assertEquals(mapOf(1L to false), server.starred)
+    }
+
+    private class StarServer(initial: Map<Long, Boolean>) {
+        val starred = initial.toMutableMap()
+        val flips = mutableListOf<Long>()
+    }
+
+    /**
+     * Stands in for a Miniflux server whose only star operation is a toggle.
+     * IDs missing from [initial] answer 404. When [failOnFlip] is set, that
+     * toggle call (1-based, counted across calls) times out without flipping.
+     */
+    private fun stubStarServer(
+        initial: Map<Long, Boolean>,
+        failOnFlip: Int? = null,
+    ): StarServer {
+        val server = StarServer(initial)
+        var flipCalls = 0
+
+        coEvery { miniflux.entry(any()) } answers {
+            val id = firstArg<Long>()
+            val starred = server.starred[id]
+
+            if (starred == null) {
+                Response.error(404, "Not Found".toResponseBody())
+            } else {
+                Response.success(arsTechnicaArticle.copy(id = id, starred = starred))
+            }
+        }
+
+        coEvery { miniflux.toggleBookmark(any()) } answers {
+            val id = firstArg<Long>()
+            flipCalls += 1
+
+            if (flipCalls == failOnFlip) {
+                throw SocketTimeoutException("Network timeout")
+            }
+
+            server.starred[id] = !server.starred.getValue(id)
+            server.flips.add(id)
+            Response.success(Unit)
+        }
+
+        return server
     }
 
     @Test
