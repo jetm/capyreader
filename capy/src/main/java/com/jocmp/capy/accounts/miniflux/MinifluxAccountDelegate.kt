@@ -360,7 +360,11 @@ internal class MinifluxAccountDelegate(
 
     private suspend fun refreshStarredEntries(): List<String> {
         val ids = fetchAllEntryIDs { offset ->
-            miniflux.entries(starred = true, limit = MAX_ENTRY_LIMIT, offset = offset)
+            val body = miniflux.entries(starred = true, limit = MAX_ENTRY_LIMIT, offset = offset)
+                .orThrow()
+                .body()
+
+            body?.let { IDPage(it.total, it.entries.map { entry -> entry.id.toString() }) }
         }
 
         articleRecords.markAllStarred(articleIDs = ids)
@@ -370,11 +374,15 @@ internal class MinifluxAccountDelegate(
 
     private suspend fun refreshUnreadEntries(): List<String> {
         val ids = fetchAllEntryIDs { offset ->
-            miniflux.entries(
+            val body = miniflux.entries(
                 status = EntryStatus.UNREAD.value,
                 limit = MAX_ENTRY_LIMIT,
                 offset = offset
             )
+                .orThrow()
+                .body()
+
+            body?.let { IDPage(it.total, it.entries.map { entry -> entry.id.toString() }) }
         }
 
         articleRecords.markAllUnread(articleIDs = ids)
@@ -383,21 +391,21 @@ internal class MinifluxAccountDelegate(
     }
 
     private suspend fun fetchAllEntryIDs(
-        fetch: suspend (offset: Int) -> Response<EntryResultSet>
+        fetch: suspend (offset: Int) -> IDPage?
     ): List<String> {
-        val firstPage = fetch(0).orThrow().body() ?: return emptyList()
-        val ids = firstPage.entries.map { it.id.toString() }.toMutableList()
+        val firstPage = fetch(0) ?: return emptyList()
+        val ids = firstPage.ids.toMutableList()
 
-        var offset = MAX_ENTRY_LIMIT
         while (ids.size < firstPage.total) {
-            val page = fetch(offset).orThrow().body() ?: break
-            if (page.entries.isEmpty()) break
-            ids.addAll(page.entries.map { it.id.toString() })
-            offset += MAX_ENTRY_LIMIT
+            val page = fetch(ids.size) ?: break
+            if (page.ids.isEmpty()) break
+            ids.addAll(page.ids)
         }
 
         return ids
     }
+
+    private class IDPage(val total: Int, val ids: List<String>)
 
     private suspend fun fetchAllEntries(cutoffDate: ZonedDateTime?) = coroutineScope {
         val changedAfter = preferences.lastRefreshedAt.get()

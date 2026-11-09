@@ -30,6 +30,7 @@ import com.jocmp.minifluxclient.UpdateFeedRequest
 import com.jocmp.capy.logging.CapyLog
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkObject
@@ -326,6 +327,50 @@ class MinifluxAccountDelegateTest {
 
         assertNotNull(article)
         assertEquals(expected = false, actual = article.read)
+    }
+
+    @Test
+    fun refresh_pagesFullEntryListingByEntriesReceived() = runTest {
+        val unread = (1L..5L).map { arsTechnicaArticle.copy(id = it, hash = "hash$it") }
+
+        coEvery { miniflux.feeds() }.returns(Response.success(feeds))
+        coEvery { miniflux.icon(1) }.returns(
+            Response.success(IconData(id = 1, data = "image/png;base64,abc", mime_type = "image/png"))
+        )
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 0, entries = emptyList()))
+        )
+        listOf(0, 2, 4).forEach { offset ->
+            coEvery {
+                miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = offset)
+            }.returns(
+                Response.success(
+                    EntryResultSet(total = 5, entries = unread.drop(offset).take(2))
+                )
+            )
+        }
+        coEvery {
+            miniflux.entries(
+                limit = 250,
+                offset = 0,
+                order = "published_at",
+                direction = "desc",
+                changedAfter = null,
+            )
+        }.returns(Response.success(EntryResultSet(total = 5, entries = unread)))
+
+        delegate.refresh(ArticleFilter.default())
+
+        coVerifyOrder {
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0)
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 2)
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 4)
+        }
+
+        val records = ArticleRecords(database)
+        unread.forEach { entry ->
+            assertEquals(expected = false, actual = records.find(entry.id.toString())?.read)
+        }
     }
 
     @Test
