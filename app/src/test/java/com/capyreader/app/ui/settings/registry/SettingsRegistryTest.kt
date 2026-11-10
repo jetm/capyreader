@@ -141,6 +141,13 @@ class SettingsRegistryTest {
     }
 
     @Test
+    fun `search finds the startup status setting`() {
+        val settings = SettingsRegistry.search("open article list", local, resolve).map { it.setting }
+
+        assertEquals(listOf(Setting.STARTUP_STATUS), settings)
+    }
+
+    @Test
     fun `search skips unavailable settings`() {
         val settings = SettingsRegistry.search("filters", feedbin, resolve).map { it.setting }
 

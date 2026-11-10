@@ -67,6 +67,10 @@ object SettingsRegistry {
                     settings = listOf(Setting.SORT_ORDER),
                 ),
                 SettingsSection(
+                    title = R.string.settings_section_startup,
+                    settings = listOf(Setting.STARTUP_STATUS),
+                ),
+                SettingsSection(
                     title = R.string.settings_section_layout,
                     settings = listOf(
                         Setting.ARTICLE_LIST_PREVIEW,
@@ -213,6 +217,7 @@ object SettingsRegistry {
             Setting.LIST_SWIPE_START -> R.string.settings_gestures_list_row_swipe_start
             Setting.LIST_SWIPE_END -> R.string.settings_gestures_list_row_swipe_end
             Setting.LIST_SWIPE_UP -> R.string.settings_gestures_list_swipe_up
+            Setting.STARTUP_STATUS -> R.string.settings_startup_status_label
             Setting.BACK_ACTION -> R.string.settings_gestures_list_back_navigation_action
             Setting.MARK_READ_ON_SCROLL -> R.string.settings_mark_read_on_scroll
             Setting.PAGE_SCROLL -> R.string.settings_scroll_by_page

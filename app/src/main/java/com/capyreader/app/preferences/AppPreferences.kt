@@ -49,6 +49,13 @@ class AppPreferences(context: Context) {
             }
         )
 
+    /**
+     * In-memory, so it resets with the process. Set once the startup list status has been resolved
+     * (or a deep link chose the list), so later view model creations keep the user's place.
+     */
+    @Volatile
+    var startupStatusResolved = false
+
     val refreshInterval: Preference<RefreshInterval>
         get() = preferenceStore.getEnum("refresh_interval", RefreshInterval.default)
 
@@ -153,6 +160,9 @@ class AppPreferences(context: Context) {
     }
 
     class ArticleListOptions(private val preferenceStore: PreferenceStore) {
+        val startupStatus: Preference<StartupStatus>
+            get() = preferenceStore.getEnum("article_list_startup_status", StartupStatus.default)
+
         val backAction: Preference<BackAction>
             get() = preferenceStore.getEnum("article_list_back_action", BackAction.default)
 

@@ -9,6 +9,7 @@ import com.capyreader.app.ui.settings.panels.ArticleListFontSizeRow
 import com.capyreader.app.ui.settings.panels.ArticleListPreviewRow
 import com.capyreader.app.ui.settings.panels.AutoDeleteRow
 import com.capyreader.app.ui.settings.panels.BackActionRow
+import com.capyreader.app.ui.settings.panels.StartupStatusRow
 import com.capyreader.app.ui.settings.panels.ClearArticlesRow
 import com.capyreader.app.ui.settings.panels.CompactModeRow
 import com.capyreader.app.ui.settings.panels.ConfirmMarkAllReadRow
@@ -81,6 +82,7 @@ fun SettingContent(
         Setting.LIST_SWIPE_START -> ListSwipeStartRow()
         Setting.LIST_SWIPE_END -> ListSwipeEndRow()
         Setting.LIST_SWIPE_UP -> ListSwipeUpRow()
+        Setting.STARTUP_STATUS -> StartupStatusRow()
         Setting.BACK_ACTION -> BackActionRow()
         Setting.MARK_READ_ON_SCROLL -> MarkReadOnScrollRow()
         Setting.PAGE_SCROLL -> PageScrollRow()

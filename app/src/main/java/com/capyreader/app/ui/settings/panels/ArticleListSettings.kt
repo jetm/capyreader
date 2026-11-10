@@ -40,6 +40,7 @@ import com.capyreader.app.preferences.AfterReadAllBehavior
 import com.capyreader.app.preferences.AppTheme
 import com.capyreader.app.preferences.ArticleListVerticalSwipe
 import com.capyreader.app.preferences.BackAction
+import com.capyreader.app.preferences.StartupStatus
 import com.capyreader.app.preferences.BadgeStyle
 import com.capyreader.app.preferences.RowSwipeOption
 import com.capyreader.app.ui.articles.ArticleListFontScale
@@ -210,6 +211,17 @@ fun ListSwipeUpRow(viewModel: GesturesSettingsViewModel = koinViewModel()) {
         options = ArticleListVerticalSwipe.entries,
         label = R.string.settings_gestures_list_swipe_up,
         disabledOption = ArticleListVerticalSwipe.DISABLED,
+        optionText = { stringResource(it.translationKey) }
+    )
+}
+
+@Composable
+fun StartupStatusRow(viewModel: GeneralSettingsViewModel = koinViewModel()) {
+    PreferenceSelect(
+        selected = viewModel.startupStatus,
+        update = viewModel::updateStartupStatus,
+        options = StartupStatus.entries,
+        label = R.string.settings_startup_status_label,
         optionText = { stringResource(it.translationKey) }
     )
 }

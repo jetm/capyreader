@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import com.capyreader.app.notifications.NotificationHelper
 import com.capyreader.app.preferences.AppPreferences
 import com.capyreader.app.preferences.ArticleListVerticalSwipe
+import com.capyreader.app.preferences.StartupStatus
 import com.capyreader.app.refresher.RefreshInterval
 import com.capyreader.app.ui.articles.feeds.AngleRefreshState
 import com.jocmp.capy.Account
@@ -266,6 +267,64 @@ class ArticleScreenViewModelTest {
 
         assertEquals(expected, viewModel.articleList.value.filter)
         assertTrue(starredList !== viewModel.articleList.value)
+    }
+
+    @Test
+    fun `unread startup status swaps all for unread on cold start`() = runTest {
+        appPreferences.articleListOptions.startupStatus.set(StartupStatus.UNREAD)
+        appPreferences.filter.set(ArticleFilter.Articles(articleStatus = ArticleStatus.ALL))
+
+        val viewModel = buildViewModel()
+        advanceUntilIdle()
+
+        val expected = ArticleFilter.Articles(articleStatus = ArticleStatus.UNREAD)
+        assertEquals(expected, viewModel.filter.value)
+        assertEquals(expected, appPreferences.filter.get())
+    }
+
+    @Test
+    fun `last used startup status leaves the stored filter`() = runTest {
+        val stored = ArticleFilter.Articles(articleStatus = ArticleStatus.STARRED)
+        appPreferences.filter.set(stored)
+
+        val viewModel = buildViewModel()
+        advanceUntilIdle()
+
+        assertEquals(stored, viewModel.filter.value)
+        assertEquals(stored, appPreferences.filter.get())
+    }
+
+    @Test
+    fun `startup status keeps the stored feed and takes the new status`() = runTest {
+        appPreferences.articleListOptions.startupStatus.set(StartupStatus.UNREAD)
+        appPreferences.filter.set(
+            ArticleFilter.Feeds(feedID = "1", folderTitle = null, feedStatus = ArticleStatus.ALL)
+        )
+
+        val viewModel = buildViewModel()
+        advanceUntilIdle()
+
+        val expected = ArticleFilter.Feeds(feedID = "1", folderTitle = null, feedStatus = ArticleStatus.UNREAD)
+        assertEquals(expected, viewModel.filter.value)
+        assertEquals(expected, appPreferences.filter.get())
+    }
+
+    @Test
+    fun `startup status is not re-applied on a second view model in the same process`() = runTest {
+        appPreferences.articleListOptions.startupStatus.set(StartupStatus.UNREAD)
+        appPreferences.filter.set(ArticleFilter.Articles(articleStatus = ArticleStatus.ALL))
+
+        buildViewModel()
+        advanceUntilIdle()
+
+        val chosen = ArticleFilter.Articles(articleStatus = ArticleStatus.ALL)
+        appPreferences.filter.set(chosen)
+
+        val second = buildViewModel()
+        advanceUntilIdle()
+
+        assertEquals(chosen, second.filter.value)
+        assertEquals(chosen, appPreferences.filter.get())
     }
 
     @Test

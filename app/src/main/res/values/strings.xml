@@ -292,6 +292,9 @@
     <string name="settings_enable_high_contrast_dark_theme">Enable high contrast dark theme</string>
     <string name="settings_section_mark_all_as_read">Mark All As Read</string>
     <string name="settings_section_layout">Layout</string>
+    <string name="settings_section_startup">Startup</string>
+    <string name="settings_startup_status_label">Open article list to</string>
+    <string name="settings_startup_status_last_used">Last used</string>
     <string name="settings_section_content">Content</string>
     <string name="settings_section_e_ink">E Ink</string>
     <string name="settings_reduce_motion_title">Reduce animations</string>
