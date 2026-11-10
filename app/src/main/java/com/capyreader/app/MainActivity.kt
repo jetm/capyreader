@@ -112,7 +112,7 @@ class MainActivity : BaseActivity() {
             return listOf(Route.AddAccount)
         }
 
-        return DeepLink.parse(intent.data, currentStatus)
+        return DeepLink.parse(intent.data, currentStatus)?.also { appPreferences.startupStatusResolved = true }
             ?: listOf(Route.ArticleList(appPreferences.filter.get()))
     }
 

@@ -83,7 +83,7 @@ class ArticleScreenViewModel(
     }
 
     private val listSession = MutableStateFlow(
-        ListSession(filter = appPreferences.filter.get(), since = OffsetDateTime.now())
+        ListSession(filter = resolveStartupFilter(), since = OffsetDateTime.now())
     )
 
     private val _filter = MutableStateFlow(listSession.value.filter)
@@ -695,6 +695,22 @@ class ArticleScreenViewModel(
 
     private suspend fun markUnread(articleID: String) {
         account.markUnread(articleID)
+    }
+
+    /**
+     * Applies the startup status once per process, keeping the stored feed or folder. Later view
+     * model creations (rotation, process-death restoration) read the stored filter unchanged.
+     */
+    private fun resolveStartupFilter(): ArticleFilter {
+        val stored = appPreferences.filter.get()
+
+        if (appPreferences.startupStatusResolved) return stored
+
+        appPreferences.startupStatusResolved = true
+
+        val status = appPreferences.articleListOptions.startupStatus.get().articleStatus ?: return stored
+
+        return stored.withStatus(status).also { appPreferences.filter.set(it) }
     }
 
     private fun resetToDefaultFilter() {

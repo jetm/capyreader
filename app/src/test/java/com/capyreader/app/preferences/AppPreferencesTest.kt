@@ -29,6 +29,11 @@ class AppPreferencesTest {
     }
 
     @Test
+    fun `startup status defaults to last used`() {
+        assertEquals(StartupStatus.LAST_USED, appPreferences.articleListOptions.startupStatus.get())
+    }
+
+    @Test
     fun `sort order defaults to newest first for each status`() {
         ArticleStatus.entries.forEach { status ->
             assertEquals(

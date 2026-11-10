@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.capyreader.app.preferences.AfterReadAllBehavior
 import com.capyreader.app.preferences.AppPreferences
+import com.capyreader.app.preferences.StartupStatus
 import com.capyreader.app.refresher.RefreshInterval
 import com.capyreader.app.refresher.RefreshScheduler
 import com.capyreader.app.ui.articles.MarkReadPosition
@@ -43,6 +44,9 @@ class GeneralSettingsViewModel(
         private set
 
     var confirmMarkAllRead by mutableStateOf(appPreferences.articleListOptions.confirmMarkAllRead.get())
+        private set
+
+    var startupStatus by mutableStateOf(appPreferences.articleListOptions.startupStatus.get())
         private set
 
     var afterReadAll by mutableStateOf(appPreferences.articleListOptions.afterReadAllBehavior.get())
@@ -98,6 +102,12 @@ class GeneralSettingsViewModel(
         appPreferences.articleListOptions.confirmMarkAllRead.set(confirm)
 
         confirmMarkAllRead = confirm
+    }
+
+    fun updateStartupStatus(status: StartupStatus) {
+        appPreferences.articleListOptions.startupStatus.set(status)
+
+        startupStatus = status
     }
 
     fun updateAfterReadAll(behavior: AfterReadAllBehavior) {
