@@ -354,6 +354,7 @@ internal class LocalAccountDelegate(
             priority = null,
             itunes_image_url = feed.itunesImageURL,
             read_later = false,
+            error_message = null,
         )
     }
 

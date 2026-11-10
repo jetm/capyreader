@@ -98,6 +98,26 @@ class FeedRecordsTest {
     }
 
     @Test
+    fun upsert_mapsErrorMessage() = runTest {
+        val records = FeedRecords(database)
+        val feed = FeedFixture(database, records = records).create()
+
+        assertNull(feed.errorMessage)
+
+        val failing = records.upsert(
+            feedID = feed.id,
+            subscriptionID = feed.subscriptionID,
+            title = feed.title,
+            feedURL = feed.feedURL,
+            siteURL = feed.siteURL,
+            faviconURL = null,
+            errorMessage = "bad xml",
+        )
+
+        assertEquals(expected = "bad xml", actual = failing?.errorMessage)
+    }
+
+    @Test
     fun findConditionalGet_expiresAfter8Days() = runTest {
         val records = FeedRecords(database)
         val feed = FeedFixture(database, records = records).create()

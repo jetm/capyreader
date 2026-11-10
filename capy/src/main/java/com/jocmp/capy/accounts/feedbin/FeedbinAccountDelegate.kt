@@ -304,6 +304,7 @@ internal class FeedbinAccountDelegate(
             priority = null,
             itunes_image_url = null,
             read_later = subscription.feed_url.startsWith("http://pages.feedbinusercontent.com/"),
+            error_message = null,
         )
     }
 

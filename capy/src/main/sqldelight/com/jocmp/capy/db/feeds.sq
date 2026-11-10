@@ -47,7 +47,8 @@ INSERT INTO feeds(
     favicon_url,
     priority,
     itunes_image_url,
-    read_later
+    read_later,
+    error_message
 )
 VALUES (
   :id,
@@ -58,7 +59,8 @@ VALUES (
   :favicon_url,
   :priority,
   :itunes_image_url,
-  :read_later
+  :read_later,
+  :error_message
 )
 ON CONFLICT(id) DO UPDATE
 SET id = id,
@@ -70,7 +72,8 @@ favicon_url = COALESCE(excluded.favicon_url, favicon_url),
 enable_sticky_full_content = enable_sticky_full_content,
 priority = excluded.priority,
 itunes_image_url = COALESCE(excluded.itunes_image_url, itunes_image_url),
-read_later = excluded.read_later;
+read_later = excluded.read_later,
+error_message = excluded.error_message;
 
 update:
 UPDATE feeds SET

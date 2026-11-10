@@ -367,6 +367,8 @@
     <string name="auth_fields_miniflux_use_password">Use Password instead</string>
     <string name="auth_fields_show_advanced">Advanced options</string>
     <string name="auth_fields_hide_advanced">Hide advanced options</string>
+    <string name="feed_error_indicator">Feed has an error</string>
+    <string name="feed_error_title">Feed error</string>
     <string name="freshrss_visibility">Visibility</string>
     <string name="freshrss_visibility_option_main">Main Stream</string>
     <string name="freshrss_visibility_option_important">Important</string>
