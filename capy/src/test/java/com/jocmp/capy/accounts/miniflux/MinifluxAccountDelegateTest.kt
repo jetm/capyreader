@@ -494,13 +494,100 @@ class MinifluxAccountDelegateTest {
     }
 
     @Test
+    fun refresh_idsListingEndingBeforeTotalKeepsLocalState() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubEntryIDs(
+            starred = true,
+            response = Response.success(EntryIDsResponse(total = 0, entry_ids = emptyList()))
+        )
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.success(EntryIDsResponse(total = 5, entry_ids = listOf(1L, 2L)))
+        )
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            offset = 2,
+            response = Response.success(EntryIDsResponse(total = 5, entry_ids = emptyList()))
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isFailure)
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
+    fun refresh_idsListingLaterPageWithoutIDsKeepsLocalState() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubEntryIDs(
+            starred = true,
+            response = Response.success(EntryIDsResponse(total = 0, entry_ids = emptyList()))
+        )
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.success(EntryIDsResponse(total = 5, entry_ids = listOf(1L, 2L)))
+        )
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            offset = 2,
+            response = Response.success(EntryIDsResponse())
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isFailure)
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
+    fun refresh_idsListingWithoutTotalFallsBackWithoutClearingState() = runTest {
+        stubRefreshBasics()
+        stubEntryIDs(
+            status = EntryStatus.UNREAD.value,
+            response = Response.success(EntryIDsResponse(entry_ids = listOf(arsTechnicaArticle.id)))
+        )
+        stubEntryIDs(starred = true, response = Response.success(EntryIDsResponse(entry_ids = emptyList())))
+        stubEmptyFullListings()
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success(EntryResultSet(total = 1, entries = listOf(arsTechnicaArticle)))
+        )
+        val local = ArticleFixture(database).create(
+            id = arsTechnicaArticle.id.toString(),
+            feed = feedFixture.create(feedID = arsTechnicaFeed.id.toString()),
+            read = false,
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isSuccess)
+        coVerify { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
+    fun refresh_fullListingWithoutBodyKeepsLocalState() = runTest {
+        val local = createLocalUnreadArticle()
+        stubRefreshBasics()
+        stubEmptyFullListings()
+        coEvery { miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0) }.returns(
+            Response.success<EntryResultSet>(null)
+        )
+
+        val result = delegate.refresh(ArticleFilter.default())
+
+        assertTrue(result.isFailure)
+        assertEquals(expected = false, actual = ArticleRecords(database).find(local.id)?.read)
+    }
+
+    @Test
     fun refresh_requestsAtMost10000IDsPerPage() = runTest {
         stubRefreshBasics()
         stubBothIDListings()
 
         delegate.refresh(ArticleFilter.default())
 
-        assertEquals(10_000, MinifluxAccountDelegate.MAX_ENTRY_IDS_LIMIT)
         coVerify(exactly = 1) { miniflux.entryIDs(EntryStatus.UNREAD.value, null, 10_000, 0) }
         coVerify(exactly = 1) { miniflux.entryIDs(null, true, 10_000, 0) }
         coVerify(exactly = 0) { miniflux.entryIDs(any(), any(), more(10_000), any()) }
