@@ -377,8 +377,9 @@ internal class MinifluxAccountDelegate(
 
     /**
      * Uses the IDs-only listing when the server has it and falls back to the full-entry
-     * listing when it does not. A missing list is never returned as an empty list, because
-     * applying an empty list marks every local article read or unstarred.
+     * listing when it does not. A missing, partial or total-less list is never returned
+     * as if it were complete, because applying one marks every local article outside it
+     * read or unstarred.
      */
     private suspend fun fetchEntryIDs(
         status: EntryStatus? = null,
@@ -393,10 +394,11 @@ internal class MinifluxAccountDelegate(
             )
             val firstIDs = if (firstResponse.isSuccessful) firstResponse.body() else null
             val firstEntryIDs = firstIDs?.entry_ids
+            val firstTotal = firstIDs?.total
 
-            if (firstIDs != null && firstEntryIDs != null) {
+            if (firstEntryIDs != null && firstTotal != null) {
                 val firstIDPage = IDPage(
-                    total = firstIDs.total ?: firstEntryIDs.size,
+                    total = firstTotal,
                     ids = firstEntryIDs.map { it.toString() }
                 )
 
@@ -444,12 +446,16 @@ internal class MinifluxAccountDelegate(
     private suspend fun fetchAllEntryIDs(
         fetch: suspend (offset: Int) -> IDPage?
     ): List<String> {
-        val firstPage = fetch(0) ?: return emptyList()
+        val firstPage = fetch(0) ?: throw IOException("Miniflux entry listing has no body")
         val ids = firstPage.ids.toMutableList()
 
         while (ids.size < firstPage.total) {
-            val page = fetch(ids.size) ?: break
-            if (page.ids.isEmpty()) break
+            val page = fetch(ids.size)
+
+            if (page == null || page.ids.isEmpty()) {
+                throw IOException("Miniflux entry listing ended at ${ids.size} of ${firstPage.total}")
+            }
+
             ids.addAll(page.ids)
         }
 
