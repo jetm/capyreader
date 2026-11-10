@@ -104,6 +104,10 @@ internal class PageScrollConnection(
                     edgeFraction = TAP_ZONE_EDGE_FRACTION,
                 ) ?: return@awaitEachGesture
 
+                // Row click handlers ignore a consumed down, so the whole press stays out of
+                // the article row whether it ends as a tap, a drag, or a long press.
+                down.consume()
+
                 val stopsFling = listState.isScrollInProgress && !turning
 
                 val up = awaitTapUp(down) ?: return@awaitEachGesture
