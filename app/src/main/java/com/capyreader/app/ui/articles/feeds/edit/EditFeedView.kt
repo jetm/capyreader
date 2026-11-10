@@ -112,6 +112,17 @@ fun EditFeedView(
             ) {
                 Column {
                     EditFeedURLDisplay(url = feed.feedURL)
+                    feed.errorMessage?.let { errorMessage ->
+                        ListItem(
+                            colors = ListItemDefaults.colors(containerColor = CardDefaults.cardColors().containerColor),
+                            headlineContent = {
+                                Text(stringResource(R.string.feed_error_title))
+                            },
+                            supportingContent = {
+                                Text(errorMessage)
+                            },
+                        )
+                    }
                     if (priority != null) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = CardDefaults.cardColors().containerColor),

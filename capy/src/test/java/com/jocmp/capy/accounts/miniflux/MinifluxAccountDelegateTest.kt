@@ -114,6 +114,12 @@ class MinifluxAccountDelegateTest {
         icon = null
     )
 
+    private val otherFeed = vergeFeed.copy(
+        id = 6,
+        title = "Other",
+        feed_url = "https://example.com/feed.xml",
+    )
+
     private val feeds = listOf(arsTechnicaFeed, vergeFeed)
     private val categories = listOf(category)
 
@@ -245,6 +251,74 @@ class MinifluxAccountDelegateTest {
 
         val enclosures = EnclosureRecords(database).findByArticle(vergeArticle.id.toString())
         assertEquals(expected = 1, actual = enclosures.size)
+    }
+
+    private suspend fun refreshWithFeeds(vararg minifluxFeeds: Feed) {
+        val emptyResults = Response.success(EntryResultSet(total = 0, entries = emptyList()))
+
+        coEvery { miniflux.feeds() }.returns(Response.success(minifluxFeeds.toList()))
+        coEvery { miniflux.entries(starred = true, limit = 250, offset = 0) }.returns(emptyResults)
+        coEvery {
+            miniflux.entries(status = EntryStatus.UNREAD.value, limit = 250, offset = 0)
+        }.returns(emptyResults)
+        coEvery {
+            miniflux.entries(
+                limit = 250,
+                offset = 0,
+                order = "published_at",
+                direction = "desc",
+                changedAfter = any(),
+            )
+        }.returns(emptyResults)
+
+        delegate.refresh(ArticleFilter.default())
+    }
+
+    private fun errorMessageFor(feedID: String): String? {
+        return database.feedsQueries.find(feedID).executeAsOne().error_message
+    }
+
+    @Test
+    fun refresh_storesFeedErrorAtThreshold() = runTest {
+        refreshWithFeeds(
+            vergeFeed.copy(parsing_error_message = "bad xml", parsing_error_count = 3),
+            otherFeed
+        )
+
+        assertEquals("bad xml", errorMessageFor("5"))
+        assertNull(errorMessageFor("6"))
+    }
+
+    @Test
+    fun refresh_ignoresFeedErrorBelowThreshold() = runTest {
+        refreshWithFeeds(vergeFeed.copy(parsing_error_message = "bad xml", parsing_error_count = 2))
+
+        assertNull(errorMessageFor("5"))
+    }
+
+    @Test
+    fun refresh_clearsFeedErrorOnRecovery() = runTest {
+        refreshWithFeeds(vergeFeed.copy(parsing_error_message = "bad xml", parsing_error_count = 4))
+        assertEquals("bad xml", errorMessageFor("5"))
+
+        refreshWithFeeds(vergeFeed.copy(parsing_error_message = "", parsing_error_count = 0))
+        assertNull(errorMessageFor("5"))
+    }
+
+    @Test
+    fun refresh_storesFixedMessageForDisabledFeed() = runTest {
+        refreshWithFeeds(vergeFeed.copy(disabled = true))
+
+        assertEquals(MinifluxAccountDelegate.DISABLED_MESSAGE, errorMessageFor("5"))
+    }
+
+    @Test
+    fun refresh_prefersParsingMessageForDisabledFeed() = runTest {
+        refreshWithFeeds(
+            vergeFeed.copy(disabled = true, parsing_error_message = "bad xml", parsing_error_count = 3)
+        )
+
+        assertEquals("bad xml", errorMessageFor("5"))
     }
 
     @Test

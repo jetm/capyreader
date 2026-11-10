@@ -503,6 +503,7 @@ internal class MinifluxAccountDelegate(
             priority = null,
             itunes_image_url = null,
             read_later = false,
+            error_message = errorMessage(feed),
         )
 
         feed.category?.let { category ->
@@ -512,6 +513,13 @@ internal class MinifluxAccountDelegate(
                 name = category.title
             )
         }
+    }
+
+    private fun errorMessage(feed: MinifluxFeed): String? {
+        val parsingError = feed.parsing_error_message
+            ?.takeIf { it.isNotBlank() && feed.parsing_error_count >= ERROR_COUNT_THRESHOLD }
+
+        return parsingError ?: DISABLED_MESSAGE.takeIf { feed.disabled }
     }
 
     private suspend fun findOrCreateCategory(title: String): Long {
@@ -552,6 +560,10 @@ internal class MinifluxAccountDelegate(
 
     companion object {
         const val MAX_ENTRY_LIMIT = 250
+
+        /** Ignore transient parse failures until Miniflux has seen this many in a row. */
+        const val ERROR_COUNT_THRESHOLD = 3
+        const val DISABLED_MESSAGE = "Feed is disabled in Miniflux"
         private const val MAX_CONCURRENT_FETCHES = 4
         private val CHANGED_AFTER_OVERLAP = 5.minutes
     }

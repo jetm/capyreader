@@ -31,6 +31,7 @@ class OfflineAccountDelegate(private val database: Database) : AccountDelegate {
                 priority = null,
                 itunes_image_url = null,
                 read_later = false,
+                error_message = null,
             )
 
             articles.forEach(::insert)
